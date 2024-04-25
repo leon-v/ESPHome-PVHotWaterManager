@@ -66,16 +66,19 @@ time:
       then:
         - logger.log: "Synchronized system clock"
     on_time:
-      - seconds: /5
-        then:
-          - script.execute: publishDeviceTime
 
       - seconds: 0
         minutes: 0
-        hours: 7
         then:
         - lambda: |-
-            id(runtimeMinutes) = 0;
+            struct tm deviceTimeTm;
+            strptime(id(deviceTimeIso).state.c_str(), "%Y-%m-%dT%H:%M:%S%z", &deviceTimeTm);
+            deviceTimeTm.tm_isdst = 0; // DST taken care of in deviceTimeIso
+            time_t deviceTimeTime = mktime(&deviceTimeTm); // Normalse time after modification
+            ESPTime deviceTimeEspTime = ESPTime::from_c_tm(&deviceTimeTm, deviceTimeTime);
+            if (deviceTimeEspTime.hour == id(runtimeCatchupEndHour).state) {
+            	id(runtimeMinutes) = 0;
+            }
         - component.update: runtime
 
       - seconds: 0
@@ -86,6 +89,7 @@ time:
             	id(runtimeMinutes)+=1;
             }
         - component.update: runtime
+        - script.execute: publishDeviceTime
 
 sensor:
   # ADC attached to current clamp. 0V raised to 2.5v so full sine wave is observed.
@@ -169,10 +173,6 @@ sensor:
         - script.execute: publishDeviceTime # Publish a caller to prevent collusions
 
 text_sensor:
-  - platform: template
-    name: "Device Time"
-    id: deviceTimeIso
-    device_class: timestamp
 
   - platform: template
     name: "Runtime End Time"
@@ -182,6 +182,11 @@ text_sensor:
   - platform: template
     name: "Runtime Start Time"
     id: runtimeStartTimeIso
+    device_class: timestamp
+  
+  - platform: template
+    name: "Device Time"
+    id: deviceTimeIso
     device_class: timestamp
 
 number:
