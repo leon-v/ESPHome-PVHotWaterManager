@@ -67,7 +67,7 @@ time:
         - logger.log: "Synchronized system clock"
     on_time:
 
-      - seconds: 0
+      - seconds: /15
         minutes: 0
         then:
         - lambda: |-
@@ -76,7 +76,7 @@ time:
             deviceTimeTm.tm_isdst = 0; // DST taken care of in deviceTimeIso
             time_t deviceTimeTime = mktime(&deviceTimeTm); // Normalse time after modification
             ESPTime deviceTimeEspTime = ESPTime::from_c_tm(&deviceTimeTm, deviceTimeTime);
-            if (deviceTimeEspTime.hour == id(runtimeCatchupEndHour).state) {
+            if ( std::round(float(deviceTimeEspTime.hour)) == std::round(float(id(runtimeCatchupEndHour).state)) ) {
             	id(runtimeMinutes) = 0;
             }
         - component.update: runtime
@@ -276,7 +276,7 @@ binary_sensor:
     name: "Heating"
     id: heating
     lambda: |-
-      return (id(power).state > 50);
+      return (id(power).state > 200);
   
   - platform: template
     name: "Time Synchronised"
